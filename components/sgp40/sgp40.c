@@ -76,7 +76,7 @@ esp_err_t sgp40_get_serial_number(sgp40_sensor_handle_t handle, uint8_t data[6])
     sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
     int i2c_err = ESP_OK;
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, &SGP40_GET_SERIAL_CMD, sizeof(SGP40_GET_SERIAL_CMD), 1000 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_GET_SERIAL_CMD, sizeof(SGP40_GET_SERIAL_CMD), 1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
         return i2c_err;
     }
@@ -114,7 +114,7 @@ esp_err_t sgp40_get_serial_number(sgp40_sensor_handle_t handle, uint8_t data[6])
 esp_err_t sgp40_turn_heater_off(sgp40_sensor_handle_t handle)
 {
     sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
-    return i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, &SGP40_TURN_HEATER_OFF_CMD, sizeof(SGP40_TURN_HEATER_OFF_CMD),  1000 / portTICK_PERIOD_MS);
+    return i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_TURN_HEATER_OFF_CMD, sizeof(SGP40_TURN_HEATER_OFF_CMD),  1000 / portTICK_PERIOD_MS);
 }
 
 esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2])
@@ -122,7 +122,7 @@ esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2])
     sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
     int i2c_err = ESP_OK;
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, &SGP40_SELF_TEST_CMD, sizeof(SGP40_SELF_TEST_CMD), 1000 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_SELF_TEST_CMD, sizeof(SGP40_SELF_TEST_CMD), 1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
         return i2c_err;
     }
@@ -149,7 +149,7 @@ esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint8_t data[2]
     sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
     int i2c_err = ESP_OK;
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, &SGP40_RAW_READ_CMD, sizeof(SGP40_RAW_READ_CMD), 1000 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_RAW_READ_CMD, sizeof(SGP40_RAW_READ_CMD), 1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
         return i2c_err;
     }
