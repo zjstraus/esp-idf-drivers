@@ -38,8 +38,8 @@ sgp40_sensor_handle_t sgp40_sensor_init(i2c_port_t port, uint8_t address)
         return NULL;
     }
 
-    runtime->i2c_port=port;
-    runtime->i2c_address=address;
+    runtime->i2c_port = port;
+    runtime->i2c_address = address;
 
     runtime->read_buffer = calloc(1, 9);
     if (!runtime->read_buffer) {
