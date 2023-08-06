@@ -1,4 +1,4 @@
-/* Collection of device drivers for ESP-IDF
+/* SGP40 driver for ESP-IDF
  * Copyright (C) 2023 Zach Strauss
  *
  * This program is free software: you can redistribute it and/or modify
