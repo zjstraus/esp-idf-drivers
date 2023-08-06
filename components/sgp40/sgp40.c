@@ -150,7 +150,7 @@ esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2])
     return ESP_OK;
 }
 
-esp_err_t sgp40_measure_raw_compensated(sgp40_sensor_handle_t handle, float humidity, float temperature, uint16_t *data)
+esp_err_t sgp40_measure_raw_signal_compensated(sgp40_sensor_handle_t handle, float humidity, float temperature, uint16_t *data)
 {
     sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
     int i2c_err = ESP_OK;
@@ -200,5 +200,5 @@ esp_err_t sgp40_measure_raw_compensated(sgp40_sensor_handle_t handle, float humi
 
 esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint16_t *data)
 {
-    return sgp40_measure_raw_compensated(handle, 50, 20, data);
+    return sgp40_measure_raw_signal_compensated(handle, 50, 20, data);
 }
