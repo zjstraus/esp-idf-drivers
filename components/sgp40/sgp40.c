@@ -22,7 +22,6 @@
 static const uint8_t SGP40_GET_SERIAL_CMD[] = {0x36, 0x82};
 static const uint8_t SGP40_TURN_HEATER_OFF_CMD[] = {0x36, 0x15};
 static const uint8_t SGP40_SELF_TEST_CMD[] = {0x28, 0x0E};
-static const uint8_t SGP40_RAW_READ_CMD[] = {0x26, 0x0F, 0x80, 0x00, 0xA2, 0x66, 0x66, 0x93};
 
 typedef struct {
     i2c_port_t i2c_port;
@@ -52,13 +51,12 @@ sgp40_sensor_handle_t sgp40_sensor_init(i2c_port_t port, uint8_t address)
     return runtime;
 }
 
-static bool sgp40_crc(sgp40_sensor_handle_t handle, uint8_t index)
+static uint8_t compute_crc8(uint8_t *data, size_t length)
 {
-    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
     uint8_t crc = 0xFF;
 
-    for (int i = index; i < index+2; i++) {
-        crc ^= runtime->read_buffer[i];
+    for (int i = 0; i < length; i++) {
+        crc ^= data[i];
 
         for (uint8_t bit = 8; bit > 0; --bit) {
             if (crc & 0x80) {
@@ -68,7 +66,15 @@ static bool sgp40_crc(sgp40_sensor_handle_t handle, uint8_t index)
             }
         }
     }
-    return crc == runtime->read_buffer[index + 2];
+
+    return crc;
+}
+
+static bool sgp40_crc(sgp40_sensor_handle_t handle, uint8_t index)
+{
+    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
+
+    return compute_crc8(runtime->read_buffer + index, 2) == runtime->read_buffer[index + 2];
 }
 
 esp_err_t sgp40_get_serial_number(sgp40_sensor_handle_t handle, uint8_t data[6])
@@ -144,12 +150,33 @@ esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2])
     return ESP_OK;
 }
 
-esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint8_t data[2])
+esp_err_t sgp40_measure_raw_compensated(sgp40_sensor_handle_t handle, float humidity, float temperature, uint16_t *data)
 {
     sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
     int i2c_err = ESP_OK;
+    uint8_t read_cmd[] = {0x26, 0x0F, 0x80, 0x00, 0xA2, 0x66, 0x66, 0x93};
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_RAW_READ_CMD, sizeof(SGP40_RAW_READ_CMD), 1000 / portTICK_PERIOD_MS);
+    if (humidity < 0) {
+        humidity = 0;
+    } else if (humidity > 100) {
+        humidity = 100;
+    }
+    uint16_t scaled_humidity = (humidity / 100) * 0xFFFF;
+    read_cmd[2] = scaled_humidity >> 8;
+    read_cmd[3] = scaled_humidity && 0xFF;
+    read_cmd[4] = compute_crc8(read_cmd + 2, 2);
+
+    if (temperature < -45) {
+        temperature = -45;
+    } else if (temperature > 130) {
+        temperature = 130;
+    }
+    uint16_t scaled_temperature = ((temperature + 45) / 175) * 0xFFFF;
+    read_cmd[5] = scaled_temperature >> 8;
+    read_cmd[6] = scaled_temperature && 0xFF;
+    read_cmd[7] = compute_crc8(read_cmd + 5, 2);
+
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, read_cmd, sizeof(read_cmd), 1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
         return i2c_err;
     }
@@ -161,12 +188,17 @@ esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint8_t data[2]
         return i2c_err;
     }
 
-    data[0] = runtime->read_buffer[0];
-    data[1] = runtime->read_buffer[1];
+    *data = runtime->read_buffer[0] << 8;
+    *data += runtime->read_buffer[1];
 
     if (!sgp40_crc(runtime, 0))  {
         return 2;
     }
 
     return ESP_OK;
+}
+
+esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint16_t *data)
+{
+    return sgp40_measure_raw_compensated(handle, 50, 20, data);
 }

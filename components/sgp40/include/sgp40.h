@@ -23,35 +23,44 @@ typedef void *sgp40_sensor_handle_t;
 
 /**
  * @brief Alloc and init a new sensor instance
- * @param port I2C port to use
- * @param address I2C address to target
+ * @param [in] port I2C port to use
+ * @param [in] address I2C address to target
  * @return Pointer to sensor instance
  */
 sgp40_sensor_handle_t sgp40_sensor_init(i2c_port_t port, uint8_t address);
 
 /**
  * @brief Query a sensor for its serial number
- * @params handle Pointer to sensor instance
- * @params data Target for serial number
+ * @param [in] handle Pointer to sensor instance
+ * @param [out] data Target for serial number
  */
 esp_err_t sgp40_get_serial_number(sgp40_sensor_handle_t handle, uint8_t data[6]);
 
 /**
  * @brief Put a sensor into idle mode
- * @params handle Pointer to sensor instance
+ * @param [in] handle Pointer to sensor instance
  */
 esp_err_t sgp40_turn_heater_off(sgp40_sensor_handle_t handle);
 
 /**
  * @brief Request a sensor perform a self-test and retrieve the result
- * @params handle Pointer to sensor instance
- * @params data Target for test results
+ * @param [in] handle Pointer to sensor instance
+ * @param [out] data Target for test results
  */
 esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2]);
 
 /**
  * @brief Retrieve the current raw value from a sensor
- * @params handle Pointer to sensor instance
- * @params data Target for results
+ * @param [in] handle Pointer to sensor instance
+ * @param [out] data Target for results
  */
-esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint8_t data[2]);
+esp_err_t sgp40_measure_raw_signal(sgp40_sensor_handle_t handle, uint16_t *data);
+
+/**
+ * @brief Retrieve the current raw value from a sensor with temperature and humidity compensation
+ * @param [in] handle Pointer to sensor instance
+ * @param [in] humidity Relative humidity (0-100%)
+ * @param [in] temperature Ambient temperature (-45-130 deg C)
+ * @param [out] data Target for results
+ */
+esp_err_t sgp40_measure_raw_signal_compensated(sgp40_sensor_handle_t handle, float humidity, float temperature, uint16_t *data);
