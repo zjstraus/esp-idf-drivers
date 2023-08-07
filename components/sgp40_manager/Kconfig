@@ -1,0 +1,8 @@
+menu "zjstraus SGP40 Manager"
+    config SGP40_MANAGER_POLL_TIME
+        int "Polling rate (s)"
+        default 10
+    config SGP40_MANAGER_SENSOR_WARMUP_TIME
+        int "Sensor preheat time (ms)"
+        default 200
+endmenu

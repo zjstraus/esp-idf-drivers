@@ -17,11 +17,19 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "esp_log.h"
 #include "sgp40.h"
+#include "sdkconfig.h"
+
+static const char *SGP40_TAG = "SGP40 driver";
 
 static const uint8_t SGP40_GET_SERIAL_CMD[] = {0x36, 0x82};
 static const uint8_t SGP40_TURN_HEATER_OFF_CMD[] = {0x36, 0x15};
 static const uint8_t SGP40_SELF_TEST_CMD[] = {0x28, 0x0E};
+
+static const TickType_t DELAY_GETSERIAL = CONFIG_SGP40_COMMAND_DELAY_GETSERIAL / portTICK_PERIOD_MS;
+static const TickType_t DELAY_READMEASUREMENT = CONFIG_SGP40_COMMAND_DELAY_READMEASUREMENT / portTICK_PERIOD_MS;
+static const TickType_t DELAY_SELFTEST = CONFIG_SGP40_COMMAND_DELAY_SELFTEST / portTICK_PERIOD_MS;
 
 typedef struct {
     i2c_port_t i2c_port;
@@ -72,26 +80,31 @@ static uint8_t compute_crc8(uint8_t *data, size_t length)
 
 static bool sgp40_crc(sgp40_sensor_handle_t handle, uint8_t index)
 {
-    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
+    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *) handle;
 
     return compute_crc8(runtime->read_buffer + index, 2) == runtime->read_buffer[index + 2];
 }
 
 esp_err_t sgp40_get_serial_number(sgp40_sensor_handle_t handle, uint8_t data[6])
 {
-    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
+    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *) handle;
     int i2c_err = ESP_OK;
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_GET_SERIAL_CMD, sizeof(SGP40_GET_SERIAL_CMD), 1000 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_GET_SERIAL_CMD,
+                                         sizeof(SGP40_GET_SERIAL_CMD), 1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
+        ESP_LOGE(SGP40_TAG, "error writing get serial command to i2c bus %d, address 0x%x: 0x%x", runtime->i2c_port,
+                 runtime->i2c_address, i2c_err);
         return i2c_err;
     }
 
-    vTaskDelay(10 / portTICK_PERIOD_MS);
-
-
-    i2c_err = i2c_master_read_from_device(runtime->i2c_port, runtime->i2c_address, runtime->read_buffer, 9, 100 / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY_GETSERIAL);
+    
+    i2c_err = i2c_master_read_from_device(runtime->i2c_port, runtime->i2c_address, runtime->read_buffer, 9,
+                                          100 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
+        ESP_LOGE(SGP40_TAG, "error reading get serial result from i2c bus %d, address 0x%x: 0x%x", runtime->i2c_port,
+                 runtime->i2c_address, i2c_err);
         return i2c_err;
     }
 
@@ -119,24 +132,31 @@ esp_err_t sgp40_get_serial_number(sgp40_sensor_handle_t handle, uint8_t data[6])
 
 esp_err_t sgp40_turn_heater_off(sgp40_sensor_handle_t handle)
 {
-    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
-    return i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_TURN_HEATER_OFF_CMD, sizeof(SGP40_TURN_HEATER_OFF_CMD),  1000 / portTICK_PERIOD_MS);
+    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *) handle;
+    return i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_TURN_HEATER_OFF_CMD,
+                                      sizeof(SGP40_TURN_HEATER_OFF_CMD), 1000 / portTICK_PERIOD_MS);
 }
 
 esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2])
 {
-    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
+    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *) handle;
     int i2c_err = ESP_OK;
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_SELF_TEST_CMD, sizeof(SGP40_SELF_TEST_CMD), 1000 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, SGP40_SELF_TEST_CMD,
+                                         sizeof(SGP40_SELF_TEST_CMD), 1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
+        ESP_LOGE(SGP40_TAG, "error writing self test command to i2c bus %d, address 0x%x: 0x%x", runtime->i2c_port,
+                 runtime->i2c_address, i2c_err);
         return i2c_err;
     }
 
-    vTaskDelay(320 / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY_SELFTEST);
 
-    i2c_err = i2c_master_read_from_device(runtime->i2c_port, runtime->i2c_address, runtime->read_buffer, 3, 100 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_read_from_device(runtime->i2c_port, runtime->i2c_address, runtime->read_buffer, 3,
+                                          100 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
+        ESP_LOGE(SGP40_TAG, "error reading self test result from i2c bus %d, address 0x%x: 0x%x", runtime->i2c_port,
+                 runtime->i2c_address, i2c_err);
         return i2c_err;
     }
 
@@ -150,9 +170,10 @@ esp_err_t sgp40_execute_self_test(sgp40_sensor_handle_t handle, uint8_t data[2])
     return ESP_OK;
 }
 
-esp_err_t sgp40_measure_raw_signal_compensated(sgp40_sensor_handle_t handle, float humidity, float temperature, uint16_t *data)
+esp_err_t
+sgp40_measure_raw_signal_compensated(sgp40_sensor_handle_t handle, float humidity, float temperature, uint16_t *data)
 {
-    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *)handle;
+    sgp40_sensor_runtime_t *runtime = (sgp40_sensor_runtime_t *) handle;
     int i2c_err = ESP_OK;
     uint8_t read_cmd[] = {0x26, 0x0F, 0x80, 0x00, 0xA2, 0x66, 0x66, 0x93};
 
@@ -176,22 +197,28 @@ esp_err_t sgp40_measure_raw_signal_compensated(sgp40_sensor_handle_t handle, flo
     read_cmd[6] = scaled_temperature && 0xFF;
     read_cmd[7] = compute_crc8(read_cmd + 5, 2);
 
-    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, read_cmd, sizeof(read_cmd), 1000 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_write_to_device(runtime->i2c_port, runtime->i2c_address, read_cmd, sizeof(read_cmd),
+                                         1000 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
+        ESP_LOGE(SGP40_TAG, "error writing get reading command to i2c bus %d, address 0x%x: 0x%x", runtime->i2c_port,
+                 runtime->i2c_address, i2c_err);
         return i2c_err;
     }
 
-    vTaskDelay(30 / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY_READMEASUREMENT);
 
-    i2c_err = i2c_master_read_from_device(runtime->i2c_port, runtime->i2c_address, runtime->read_buffer, 3, 100 / portTICK_PERIOD_MS);
+    i2c_err = i2c_master_read_from_device(runtime->i2c_port, runtime->i2c_address, runtime->read_buffer, 3,
+                                          100 / portTICK_PERIOD_MS);
     if (i2c_err != ESP_OK) {
+        ESP_LOGE(SGP40_TAG, "error reading get reading result from i2c bus %d, address 0x%x: 0x%x", runtime->i2c_port,
+                 runtime->i2c_address, i2c_err);
         return i2c_err;
     }
 
     *data = runtime->read_buffer[0] << 8;
     *data += runtime->read_buffer[1];
 
-    if (!sgp40_crc(runtime, 0))  {
+    if (!sgp40_crc(runtime, 0)) {
         return 2;
     }
 

@@ -1,0 +1,13 @@
+menu "zjstraus SGP40 Driver"
+    config SGP40_COMMAND_DELAY_GETSERIAL
+        int "Wait time for response to get serial command (ms)"
+        default 10
+
+    config SGP40_COMMAND_DELAY_READMEASUREMENT
+        int "Wait time for response to read measurement command (ms)"
+        default 30
+
+    config SGP40_COMMAND_DELAY_SELFTEST
+        int "Wait time for response to self test command (ms)"
+        default 320
+endmenu
